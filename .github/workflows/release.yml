@@ -3,9 +3,22 @@ name: Release APK
 # Builds a release APK and attaches it to a GitHub Release whenever a tag
 # like "v1.2.3" is pushed -- Obtainium tracks this repo's Releases page and
 # picks up the APK asset automatically, no Play Store/app-store submission
-# needed. Debug-signed (see build.gradle.kts) -- fine for personal
-# sideloading; revisit with a real signing key if this is ever distributed
-# more broadly.
+# needed.
+#
+# Signed with a persistent release key (repo secrets below), NOT the
+# debug key -- every CI run is a fresh machine with no persisted debug
+# keystore, so debug-signed releases each get a different random
+# signature, and Android refuses to install an "update" whose signature
+# doesn't match what's already on the device (forces an uninstall first).
+# Requires these repository secrets (Settings > Secrets and variables >
+# Actions > New repository secret) to be set once:
+#   RELEASE_KEYSTORE_BASE64  -- `base64 -w0 zelia-release.jks`
+#   RELEASE_KEYSTORE_PASSWORD
+#   RELEASE_KEY_ALIAS
+#   RELEASE_KEY_PASSWORD
+# Falls back to debug signing (old behavior) if these aren't set, so this
+# workflow doesn't hard-fail for a fork/clone without the secrets --
+# but updates won't install in-place for anyone relying on the fallback.
 
 on:
   push:
@@ -30,6 +43,19 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.44.8"   # pinned to match the version this app was built/tested against locally
+
+      - name: Set up release signing key
+        if: ${{ secrets.RELEASE_KEYSTORE_BASE64 != '' }}
+        env:
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+        run: |
+          echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > android/zelia-release.jks
+          cat > android/key.properties <<EOF
+          storeFile=zelia-release.jks
+          storePassword=${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          keyAlias=${{ secrets.RELEASE_KEY_ALIAS }}
+          keyPassword=${{ secrets.RELEASE_KEY_PASSWORD }}
+          EOF
 
       - run: flutter pub get
       - run: flutter build apk --release
