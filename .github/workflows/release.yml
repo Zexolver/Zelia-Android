@@ -13,6 +13,9 @@ on:
       - "v*"
   workflow_dispatch: {}
 
+permissions:
+  contents: write   # softprops/action-gh-release needs this to create the Release; the default GITHUB_TOKEN is read-only otherwise
+
 jobs:
   build:
     runs-on: ubuntu-latest
