@@ -45,16 +45,27 @@ jobs:
           flutter-version: "3.44.8"   # pinned to match the version this app was built/tested against locally
 
       - name: Set up release signing key
-        if: ${{ secrets.RELEASE_KEYSTORE_BASE64 != '' }}
         env:
           RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: |
+          # The `secrets` context can't be referenced directly in a step's
+          # `if:` (GitHub Actions rejects it: "Unrecognized named-value:
+          # 'secrets'") -- confirmed live, that's exactly what broke this
+          # workflow the first time. Doing the "are these set at all"
+          # check in bash instead, using the env vars above.
+          if [ -z "$RELEASE_KEYSTORE_BASE64" ]; then
+            echo "No release signing secrets configured -- falling back to debug signing."
+            exit 0
+          fi
           echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > android/zelia-release.jks
           cat > android/key.properties <<EOF
           storeFile=zelia-release.jks
-          storePassword=${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
-          keyAlias=${{ secrets.RELEASE_KEY_ALIAS }}
-          keyPassword=${{ secrets.RELEASE_KEY_PASSWORD }}
+          storePassword=$RELEASE_KEYSTORE_PASSWORD
+          keyAlias=$RELEASE_KEY_ALIAS
+          keyPassword=$RELEASE_KEY_PASSWORD
           EOF
 
       - run: flutter pub get
