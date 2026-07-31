@@ -18,7 +18,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   bool _loading = true;
   bool _testing = false;
+  bool _autoDetecting = false;
   String? _testResult;
+  String? _autoDetectResult;
 
   @override
   void initState() {
@@ -30,9 +32,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _load() async {
     final url = await _settings.getServerUrl();
     final token = await _settings.getToken();
-    _urlController.text = url ?? 'http://100.';
     _tokenController.text = token ?? '';
-    setState(() => _loading = false);
+
+    if (url != null && url.isNotEmpty) {
+      _urlController.text = url;
+      setState(() => _loading = false);
+      return;
+    }
+
+    // Nothing saved yet -- try to find ZELIA automatically before falling
+    // back to asking the user to type an address. Tailscale doesn't
+    // support broadcast-style LAN discovery (it's point-to-point tunnels,
+    // not a real shared network segment), but MagicDNS gives every device
+    // a stable hostname, so probing that known address is the actual
+    // "auto-detect" available here -- not a generic network scan.
+    setState(() => _autoDetecting = true);
+    final found = await _api.checkHealth(SettingsService.defaultServerUrl);
+    setState(() {
+      _autoDetecting = false;
+      _loading = false;
+      if (found) {
+        _urlController.text = SettingsService.defaultServerUrl;
+        _autoDetectResult = 'Found ZELIA automatically -- just add the token below.';
+      } else {
+        _urlController.text = 'http://100.';
+        _autoDetectResult = "Couldn't auto-detect ZELIA -- enter the address manually "
+            "(check Tailscale is connected on both devices).";
+      }
+    });
   }
 
   Future<void> _testConnection() async {
@@ -63,7 +90,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(),
+              if (_autoDetecting) ...[
+                const SizedBox(height: 16),
+                const Text('Looking for ZELIA...'),
+              ],
+            ],
+          ),
+        ),
+      );
     }
 
     return Scaffold(
@@ -79,10 +119,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 8),
             const Text(
-              "Enter your ZELIA machine's Tailscale address and the token from "
-              "its config.yaml (remote_bridge section). Both devices need "
-              "Tailscale connected.",
+              "The address is auto-detected when possible. Add the token from "
+              "your ZELIA machine's config.yaml (remote_bridge section). Both "
+              "devices need Tailscale connected.",
             ),
+            if (_autoDetectResult != null) ...[
+              const SizedBox(height: 12),
+              Text(_autoDetectResult!, style: Theme.of(context).textTheme.bodyMedium),
+            ],
             const SizedBox(height: 16),
             TextField(
               controller: _urlController,
