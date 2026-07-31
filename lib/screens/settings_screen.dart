@@ -32,7 +32,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _load() async {
     final url = await _settings.getServerUrl();
     final token = await _settings.getToken();
-    _tokenController.text = token ?? '';
+    // Falls back to the bundled token (see settings_service.dart) rather
+    // than an empty field -- if this screen is showing at all, the chat
+    // screen's own auto-configure attempt already failed (couldn't reach
+    // the default address), but the token itself is still known.
+    _tokenController.text = token ?? SettingsService.bundledToken;
 
     if (url != null && url.isNotEmpty) {
       _urlController.text = url;
@@ -119,9 +123,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 8),
             const Text(
-              "The address is auto-detected when possible. Add the token from "
-              "your ZELIA machine's config.yaml (remote_bridge section). Both "
-              "devices need Tailscale connected.",
+              "Address and token are both filled in automatically when "
+              "possible -- just confirm Tailscale is connected on both "
+              "devices and hit Save.",
             ),
             if (_autoDetectResult != null) ...[
               const SizedBox(height: 12),

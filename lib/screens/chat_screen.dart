@@ -34,6 +34,12 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _checkSetup() async {
+    // Try fully hands-off setup first (default address reachable -> save
+    // it plus the bundled token, no user interaction needed at all).
+    // Only fall back to Settings if that doesn't work out.
+    final autoConfigured = await _settings.tryAutoConfigure(_api.checkHealth);
+    if (autoConfigured) return;
+
     final configured = await _settings.isConfigured();
     if (!configured && mounted) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _openSettings());
