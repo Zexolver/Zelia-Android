@@ -3,6 +3,9 @@
     <!-- Runtime-requested on Android 13+ (permission_handler); needed to
          show a notification when ZELIA replies while the app is backgrounded. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- Runtime-requested (permission_handler); needed for speech_to_text's
+         microphone capture. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <application
         android:label="ZELIA"
         android:name="${applicationName}"
@@ -39,6 +42,27 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <!-- Makes ZELIA selectable under Settings > Apps > Default apps >
+             Digital assistant app. onNewSession (ZeliaVoiceInteractionSession)
+             just brings the chat screen to the front and tells it to start
+             listening immediately, rather than re-implementing the whole UI
+             a second time as a floating assistant overlay. -->
+        <service
+            android:name=".ZeliaVoiceInteractionService"
+            android:permission="android.permission.BIND_VOICE_INTERACTION"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.voice.VoiceInteractionService"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.voice_interaction"
+                android:resource="@xml/interaction_service"/>
+        </service>
+        <service
+            android:name=".ZeliaVoiceInteractionSessionService"
+            android:permission="android.permission.BIND_VOICE_INTERACTION"
+            android:exported="true"/>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

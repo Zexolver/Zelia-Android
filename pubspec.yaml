@@ -50,6 +50,8 @@ dependencies:
   permission_handler: ^11.3.1
   # Date formatting for the second-brain memory viewer.
   intl: ^0.19.0
+  speech_to_text: ^7.4.0
+  flutter_tts: ^4.2.5
 
 dev_dependencies:
   flutter_test:

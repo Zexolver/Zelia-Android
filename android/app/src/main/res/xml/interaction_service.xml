@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Required declaration for a VoiceInteractionService (see
+    AndroidManifest.xml and ZeliaVoiceInteractionService.kt).
+
+    android:recognitionService is a mandatory attribute of this tag per
+    the Android API, but ZELIA's actual speech capture happens entirely
+    inside the Flutter app via the speech_to_text plugin, not through
+    this session's own recognition binding: this value is never actually
+    invoked by ZeliaVoiceInteractionSession. It's set to the Google app's
+    recognizer purely to satisfy the manifest schema with a component
+    that's present on essentially every real device; it does not make
+    this app depend on Google Play Services for anything it actually
+    does.
+-->
+<voice-interaction-service
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:sessionService="com.zexolver.zelia.ZeliaVoiceInteractionSessionService"
+    android:recognitionService="com.google.android.googlequicksearchbox/com.google.android.voicesearch.serviceapi.GoogleRecognitionService"
+    android:supportsAssist="true"
+    android:supportsLaunchVoiceAssistFromKeyguard="true" />

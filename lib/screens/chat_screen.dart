@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../services/notification_service.dart';
 import '../services/settings_service.dart';
+import '../services/voice_service.dart';
 import '../services/zelia_api.dart';
 import 'memories_screen.dart';
 import 'settings_screen.dart';
+
+/// Matches MainActivity.kt's channel name -- bridges the assist-gesture
+/// launch (ZeliaVoiceInteractionSession) into this screen. See
+/// MainActivity.kt's doc comment for why this is a pull-on-cold-start,
+/// push-once-running split rather than always pushing.
+const _assistChannel = MethodChannel('com.zexolver.zelia/assist');
 
 class _ChatMessage {
   final String text;
@@ -24,10 +32,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   final _settings = SettingsService();
   late final ZeliaApi _api;
   final _notifications = NotificationService();
+  final _voice = VoiceService();
   final _inputController = TextEditingController();
   final _scrollController = ScrollController();
   final List<_ChatMessage> _messages = [];
   bool _sending = false;
+  bool _listening = false;
   AppLifecycleState _lifecycleState = AppLifecycleState.resumed;
 
   @override
@@ -37,6 +47,45 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     _api = ZeliaApi(_settings);
     _notifications.init();
     _checkSetup();
+
+    _assistChannel.setMethodCallHandler((call) async {
+      if (call.method == 'startListening') _startListening();
+    });
+    _checkAssistLaunch();
+  }
+
+  /// Cold-start case: was this process launched via the assist gesture
+  /// (ZeliaVoiceInteractionSession)? See MainActivity.kt.
+  Future<void> _checkAssistLaunch() async {
+    try {
+      final launched = await _assistChannel.invokeMethod<bool>('consumeAssistLaunch') ?? false;
+      if (launched) _startListening();
+    } on PlatformException {
+      // No-op -- just means the platform channel isn't there (shouldn't
+      // happen on Android, harmless if it ever does).
+    }
+  }
+
+  Future<void> _startListening() async {
+    if (_listening || _sending) return;
+    final started = await _voice.startListening(
+      onResult: (text) {
+        _inputController.text = text;
+        _send();
+      },
+      onListeningChange: (listening) {
+        if (mounted) setState(() => _listening = listening);
+      },
+    );
+    if (!started && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Couldn't start listening -- check the microphone permission.")),
+      );
+    }
+  }
+
+  void _stopListening() {
+    _voice.stopListening();
   }
 
   @override
@@ -96,6 +145,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       // for the "replied while I was multitasking on my phone" case.
       if (_lifecycleState != AppLifecycleState.resumed) {
         _notifications.showReply(replyText);
+      } else if (await _settings.getSpeakReplies()) {
+        _voice.speak(replyText);
       }
     } on ZeliaApiException catch (e) {
       setState(() {
@@ -178,6 +229,13 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                       textInputAction: TextInputAction.send,
                       onSubmitted: (_) => _send(),
                     ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton.filledTonal(
+                    onPressed: _sending ? null : (_listening ? _stopListening : _startListening),
+                    icon: Icon(_listening ? Icons.mic : Icons.mic_none),
+                    color: _listening ? colors.error : null,
+                    tooltip: _listening ? 'Stop listening' : 'Speak to ZELIA',
                   ),
                   const SizedBox(width: 8),
                   IconButton.filled(

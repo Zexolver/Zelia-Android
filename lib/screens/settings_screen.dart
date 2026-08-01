@@ -19,6 +19,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _loading = true;
   bool _testing = false;
   bool _autoDetecting = false;
+  bool _speakReplies = true;
   String? _testResult;
   String? _autoDetectResult;
 
@@ -27,6 +28,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     _api = ZeliaApi(_settings);
     _load();
+    _settings.getSpeakReplies().then((value) {
+      if (mounted) setState(() => _speakReplies = value);
+    });
   }
 
   Future<void> _load() async {
@@ -174,6 +178,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 12),
               Text(_testResult!, style: Theme.of(context).textTheme.bodyMedium),
             ],
+            const SizedBox(height: 24),
+            const Divider(),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Speak replies aloud'),
+              subtitle: const Text('Uses this phone\'s text-to-speech voice, not ZELIA\'s desktop voice.'),
+              value: _speakReplies,
+              onChanged: (value) {
+                setState(() => _speakReplies = value);
+                _settings.setSpeakReplies(value);
+              },
+            ),
           ],
         ),
       ),

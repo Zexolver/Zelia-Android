@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class SettingsService {
   static const _keyServerUrl = 'server_url';
   static const _keyToken = 'token';
+  static const _keySpeakReplies = 'speak_replies';
 
   /// Tailscale MagicDNS name for the one ZELIA machine this app currently
   /// talks to (see `tailscale status --json`'s Self.DNSName) -- stable
@@ -62,5 +63,18 @@ class SettingsService {
   Future<bool> isConfigured() async {
     final url = await getServerUrl();
     return url != null && url.isNotEmpty;
+  }
+
+  /// Whether ZELIA's replies should be spoken aloud (flutter_tts) as well
+  /// as shown as text -- on by default, matching how a voice assistant is
+  /// expected to behave, especially when launched via the assist gesture.
+  Future<bool> getSpeakReplies() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keySpeakReplies) ?? true;
+  }
+
+  Future<void> setSpeakReplies(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keySpeakReplies, value);
   }
 }
