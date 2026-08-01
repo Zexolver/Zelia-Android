@@ -73,6 +73,11 @@ kotlin {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    // Runs the vendored openWakeWord port (wakeword/ package, see its
+    // README for attribution) for the always-listening "hey jarvis" wake
+    // word -- same ONNX models the desktop already uses via Python
+    // openwakeword, no retraining needed.
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.18.0")
 }
 
 flutter {

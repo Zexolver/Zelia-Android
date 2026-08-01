@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../services/settings_service.dart';
 import '../services/zelia_api.dart';
+
+const _assistChannel = MethodChannel('com.zexolver.zelia/assist');
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -20,6 +24,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _testing = false;
   bool _autoDetecting = false;
   bool _speakReplies = true;
+  bool _alwaysListen = false;
   String? _testResult;
   String? _autoDetectResult;
 
@@ -31,6 +36,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _settings.getSpeakReplies().then((value) {
       if (mounted) setState(() => _speakReplies = value);
     });
+    _settings.getAlwaysListen().then((value) {
+      if (mounted) setState(() => _alwaysListen = value);
+    });
+  }
+
+  Future<void> _setAlwaysListen(bool value) async {
+    if (value) {
+      final status = await Permission.microphone.request();
+      if (!status.isGranted) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Microphone permission is needed for always-listening mode.')),
+          );
+        }
+        return;
+      }
+    }
+    setState(() => _alwaysListen = value);
+    await _settings.setAlwaysListen(value);
+    await _assistChannel.invokeMethod(value ? 'startWakeWordService' : 'stopWakeWordService');
   }
 
   Future<void> _load() async {
@@ -189,6 +214,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 setState(() => _speakReplies = value);
                 _settings.setSpeakReplies(value);
               },
+            ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Always listen for "hey jarvis"'),
+              subtitle: const Text(
+                'Keeps the microphone on in the background (persistent notification, uses battery). '
+                'A stopgap until a custom "hey Zelia" wake word exists.',
+              ),
+              value: _alwaysListen,
+              onChanged: _setAlwaysListen,
             ),
           ],
         ),

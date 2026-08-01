@@ -61,10 +61,16 @@ class VoiceService {
     _stt.stop();
   }
 
+  /// The phone's TTS engine reads "Zelia" as "Zee-lee-ah" -- explicit
+  /// user correction: it should sound like "Zelya". Only respelled for
+  /// speech, not for anything displayed on screen (see tts.py's
+  /// _respell_for_pronunciation for the same fix on the desktop side).
+  static final _namePronunciation = RegExp(r'\bzelia\b', caseSensitive: false);
+
   Future<void> speak(String text) async {
     if (text.trim().isEmpty) return;
     await _tts.stop();
-    await _tts.speak(text);
+    await _tts.speak(text.replaceAll(_namePronunciation, 'Zelya'));
   }
 
   Future<void> stopSpeaking() => _tts.stop();

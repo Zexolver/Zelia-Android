@@ -7,6 +7,7 @@ class SettingsService {
   static const _keyServerUrl = 'server_url';
   static const _keyToken = 'token';
   static const _keySpeakReplies = 'speak_replies';
+  static const _keyAlwaysListen = 'always_listen_wake_word';
 
   /// Tailscale MagicDNS name for the one ZELIA machine this app currently
   /// talks to (see `tailscale status --json`'s Self.DNSName) -- stable
@@ -76,5 +77,20 @@ class SettingsService {
   Future<void> setSpeakReplies(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keySpeakReplies, value);
+  }
+
+  /// Whether the phone should always listen in the background for "hey
+  /// jarvis" (WakeWordService.kt). Off by default -- explicitly opt-in,
+  /// since it means a persistent foreground notification and continuous
+  /// microphone use. "hey jarvis" is a stopgap until a custom "hey
+  /// Zelia" wake word is trained; see CLAUDE.md's wake word plan.
+  Future<bool> getAlwaysListen() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyAlwaysListen) ?? false;
+  }
+
+  Future<void> setAlwaysListen(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyAlwaysListen, value);
   }
 }

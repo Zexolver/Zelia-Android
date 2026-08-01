@@ -4,8 +4,13 @@
          show a notification when ZELIA replies while the app is backgrounded. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <!-- Runtime-requested (permission_handler); needed for speech_to_text's
-         microphone capture. -->
+         microphone capture, and for the always-listening wake word below. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <!-- Required to run WakeWordService as a foreground service (Android's
+         mandatory declaration for a persistent-microphone service, paired
+         with the notification WakeWordService itself shows). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE"/>
     <application
         android:label="ZELIA"
         android:name="${applicationName}"
@@ -63,6 +68,14 @@
             android:name=".ZeliaVoiceInteractionSessionService"
             android:permission="android.permission.BIND_VOICE_INTERACTION"
             android:exported="true"/>
+
+        <!-- Always-listening "hey jarvis" wake word, see WakeWordService.kt.
+             Only running while the user has explicitly turned on "Always
+             listen" in Settings: never started automatically. -->
+        <service
+            android:name=".WakeWordService"
+            android:foregroundServiceType="microphone"
+            android:exported="false"/>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

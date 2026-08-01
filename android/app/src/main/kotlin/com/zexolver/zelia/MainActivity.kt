@@ -6,9 +6,12 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 /**
- * Bridges the assist-gesture launch (ZeliaVoiceInteractionSession) into
- * Flutter. Two paths, matching the two ways this activity can end up
- * handling an assist launch:
+ * Bridges both the assist-gesture launch (ZeliaVoiceInteractionSession)
+ * and the always-listening wake-word service (WakeWordService) into
+ * Flutter.
+ *
+ * Assist-launch detection has two paths, matching the two ways this
+ * activity can end up handling one:
  *  - Cold start: Dart isn't running yet when the intent arrives, so a
  *    push here would race the engine's own startup. Instead Dart pulls
  *    via consumeAssistLaunch once it's ready (see chat_screen.dart).
@@ -30,6 +33,22 @@ class MainActivity : FlutterActivity() {
                 "consumeAssistLaunch" -> {
                     result.success(pendingAssistLaunch)
                     pendingAssistLaunch = false
+                }
+                "startWakeWordService" -> {
+                    startForegroundService(Intent(this, WakeWordService::class.java))
+                    result.success(null)
+                }
+                "stopWakeWordService" -> {
+                    stopService(Intent(this, WakeWordService::class.java))
+                    result.success(null)
+                }
+                "pauseWakeWordListening" -> {
+                    startService(Intent(this, WakeWordService::class.java).setAction(WakeWordService.ACTION_PAUSE))
+                    result.success(null)
+                }
+                "resumeWakeWordListening" -> {
+                    startService(Intent(this, WakeWordService::class.java).setAction(WakeWordService.ACTION_RESUME))
+                    result.success(null)
                 }
                 else -> result.notImplemented()
             }

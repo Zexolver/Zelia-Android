@@ -52,6 +52,13 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       if (call.method == 'startListening') _startListening();
     });
     _checkAssistLaunch();
+
+    // Recovers the wake-word service after the app process was killed
+    // and relaunched (a foreground service dies with its host process) --
+    // no-op if the setting is off.
+    _settings.getAlwaysListen().then((enabled) {
+      if (enabled) _assistChannel.invokeMethod('startWakeWordService');
+    });
   }
 
   /// Cold-start case: was this process launched via the assist gesture
@@ -68,6 +75,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
   Future<void> _startListening() async {
     if (_listening || _sending) return;
+    // AudioRecord doesn't reliably support two simultaneous owners --
+    // pause WakeWordService's own mic use while this capture runs (no-op
+    // if the always-listen setting is off / the service isn't running).
+    if (await _settings.getAlwaysListen()) {
+      _assistChannel.invokeMethod('pauseWakeWordListening');
+    }
     final started = await _voice.startListening(
       onResult: (text) {
         _inputController.text = text;
@@ -155,6 +168,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     } finally {
       setState(() => _sending = false);
       _scrollToBottom();
+      if (await _settings.getAlwaysListen()) {
+        _assistChannel.invokeMethod('resumeWakeWordListening');
+      }
     }
   }
 
